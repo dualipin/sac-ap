@@ -1,7 +1,5 @@
 import environ
 from pathlib import Path
-from cryptography.fernet import Fernet
-from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -17,22 +15,7 @@ SECRET_KEY = env('DJANGO_SECRET_KEY')
 DEBUG = env('DJANGO_DEBUG')
 
 # Configuración de cifrado
-FERNET_KEY = env('FERNET_KEY')
-SECURITY_PEPPER = SECRET_KEY
-FERNET_KEYS = {
-    'k1': FERNET_KEY,
-}
-
-FERNET_PRIMARY_KEY_ID = 'k1'
-
-if not FERNET_KEYS or not SECURITY_PEPPER:
-    raise ImproperlyConfigured("Las claves de cifrado no están configuradas correctamente.")
-
-try:
-    FERNET: str = FERNET_KEYS[FERNET_PRIMARY_KEY_ID]
-    Fernet(FERNET.encode() if isinstance(FERNET, str) else FERNET)
-except Exception as e:
-    raise ImproperlyConfigured("La clave FERNET_KEY no es válida.") from e
+SALT_KEY = env.list('SALT_KEY')
 
 # External API URLs
 CURP_API_URL = env("CURP_API_URL")
