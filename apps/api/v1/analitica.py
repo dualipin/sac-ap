@@ -99,5 +99,4 @@ urlpatterns = [
         name="analytics-report-pdf",
     ),
     path("basica/", include(analitica_basica_patterns)),
-    # path('graficas/', include('modulos.analitica.routes.analitica_para_graficas')),
 ]

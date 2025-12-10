@@ -147,6 +147,138 @@ class EstadisticasCompletasView(views.APIView):
             "tendencia_mensual": list(tendencia_mensual),
         }
 
+        # Si es admin, agregar analíticas avanzadas
+        if getattr(user, "rol", None) == "admin":
+            from apps.dependecias_municipales.models import DependenciaMunicipal
+            from apps.ciudadanos.models import Ciudadano
+            from apps.solicitudes.models import Comentario
+
+            # Rendimiento de funcionarios
+            rendimiento_funcionarios = []
+            for funcionario in Funcionario.objects.select_related(
+                "dependencia", "usuario"
+            ):
+                solicitudes_dependencia = queryset.filter(
+                    categoria__dependencia_municipal=funcionario.dependencia
+                )
+
+                total_asignadas = solicitudes_dependencia.count()
+                if total_asignadas == 0:
+                    continue
+
+                comentarios_funcionario = Comentario.objects.filter(
+                    solicitud__in=solicitudes_dependencia,
+                    creado_por=(
+                        str(funcionario.usuario)
+                        if funcionario.usuario
+                        else funcionario.nombre_completo
+                    ),
+                ).count()
+
+                completadas = solicitudes_dependencia.filter(
+                    estado="completada"
+                ).count()
+                tasa_resolucion = (
+                    round((completadas / total_asignadas * 100), 2)
+                    if total_asignadas > 0
+                    else 0
+                )
+
+                rendimiento_funcionarios.append(
+                    {
+                        "id": funcionario.id,
+                        "nombre": funcionario.nombre_completo,
+                        "cargo": funcionario.cargo,
+                        "dependencia": funcionario.dependencia.nombre,
+                        "solicitudes_asignadas": total_asignadas,
+                        "comentarios_realizados": comentarios_funcionario,
+                        "solicitudes_completadas": completadas,
+                        "tasa_resolucion": tasa_resolucion,
+                    }
+                )
+
+            rendimiento_funcionarios.sort(
+                key=lambda x: x["tasa_resolucion"], reverse=True
+            )
+
+            # Solicitudes por localidad detallada (Top 20)
+            solicitudes_por_localidad_detallada = list(
+                queryset.exclude(ciudadano__localidad__isnull=True)
+                .values(
+                    localidad=F("ciudadano__localidad__colonia"),
+                    codigo_postal=F("ciudadano__localidad__codigo_postal"),
+                    municipio=F("ciudadano__localidad__municipio"),
+                )
+                .annotate(total_solicitudes=Count("id"))
+                .order_by("-total_solicitudes")[:20]
+            )
+
+            # Solicitudes por dependencia
+            solicitudes_por_dependencia = list(
+                queryset.values(
+                    dependencia_id=F("categoria__dependencia_municipal__id"),
+                    dependencia=F("categoria__dependencia_municipal__nombre"),
+                )
+                .annotate(
+                    total=Count("id"),
+                    completadas=Count("id", filter=Q(estado="completada")),
+                    en_proceso=Count("id", filter=Q(estado__in=["enviada", "visto"])),
+                    rechazadas=Count("id", filter=Q(estado="rechazada")),
+                )
+                .order_by("-total")
+            )
+
+            # Tiempo de resolución por dependencia
+            tiempo_resolucion_dependencia = []
+            for dep in DependenciaMunicipal.objects.all():
+                solicitudes_completadas = queryset.filter(
+                    categoria__dependencia_municipal=dep, estado="completada"
+                )
+
+                if solicitudes_completadas.exists():
+                    tiempos = []
+                    for sol in solicitudes_completadas:
+                        tiempo = (
+                            sol.fecha_actualizacion - sol.fecha_creacion
+                        ).total_seconds() / 3600
+                        tiempos.append(tiempo)
+
+                    promedio = round(sum(tiempos) / len(tiempos), 2) if tiempos else 0
+
+                    tiempo_resolucion_dependencia.append(
+                        {
+                            "dependencia": dep.nombre,
+                            "tiempo_promedio_horas": promedio,
+                            "solicitudes_completadas": len(tiempos),
+                        }
+                    )
+
+            tiempo_resolucion_dependencia.sort(key=lambda x: x["tiempo_promedio_horas"])
+
+            # Ciudadanos activos y por sexo
+            ciudadanos_activos = (
+                Ciudadano.objects.filter(
+                    solicitudes__fecha_creacion__gte=timezone.now() - timedelta(days=30)
+                )
+                .distinct()
+                .count()
+            )
+
+            ciudadanos_por_sexo = list(
+                Ciudadano.objects.values("sexo").annotate(total=Count("id"))
+            )
+
+            data["admin_avanzado"] = {
+                "rendimiento_funcionarios": rendimiento_funcionarios,
+                "solicitudes_por_localidad_detallada": solicitudes_por_localidad_detallada,
+                "solicitudes_por_dependencia": solicitudes_por_dependencia,
+                "tiempo_resolucion_por_dependencia": tiempo_resolucion_dependencia,
+                "ciudadanos_activos_ultimo_mes": ciudadanos_activos,
+                "ciudadanos_por_sexo": ciudadanos_por_sexo,
+                "total_ciudadanos": Ciudadano.objects.count(),
+                "total_funcionarios": Funcionario.objects.count(),
+            }
+
         return Response(data)
 
 
