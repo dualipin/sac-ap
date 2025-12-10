@@ -212,6 +212,26 @@ Importancia	Alta
 Frecuencia	10 veces al día el primer mes, después 2 veces
 Comentarios	Es crítico que la asignación de dependencia sea obligatoria para evitar solicitudes huérfanas.
 
+RF-13 Gestión de Dependencias
+
+Versión: 1.0
+
+Descripción: El sistema permitirá al usuario administrador registrar, editar y dar de baja (lógica) las dependencias o áreas del ayuntamiento (ej. Obras Públicas, Alumbrado, DIF).
+
+Precondición: Usuario administrador autenticado.
+
+Secuencia normal:
+
+Admin accede al módulo "Dependencias".
+
+Selecciona "Nueva Dependencia".
+
+Ingresa nombre, titular, ubicación física y teléfono de contacto.
+
+El sistema valida y guarda.
+
+Importancia: Alta (Crítica).
+
 Requerimientos No Funcionales.
 Tabla 1
 Requerimiento No Funcional 01

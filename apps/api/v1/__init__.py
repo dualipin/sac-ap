@@ -4,6 +4,7 @@ urlpatterns = [
     path("analitica/", include("apps.api.v1.analitica")),
     path("localidades/", include("apps.api.v1.localidades")),
     path("ciudadanos/", include("apps.api.v1.ciudadanos")),
+    path("funcionarios/", include("apps.api.v1.funcionarios")),
     path("token/", include("apps.api.v1.autenticacion")),
     path("programas/", include("apps.api.v1.programas")),
     path("solicitudes/", include("apps.api.v1.solicitudes")),
